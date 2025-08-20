@@ -1,19 +1,26 @@
+# app.py
 import os
 import json
 import streamlit as st
+
 from draft_assistant import get_draft_recommendations, pretty_render
-from rankings_loader import load_rankings
+from rankings_loader import load_rankings, clear_rankings_cache
 from utils import parse_lines, minus_drafted
 
-st.set_page_config(page_title="Fantasy Sports Insights", layout="centered")
+# --------------------
+# Page setup
+# --------------------
+st.set_page_config(page_title="Fantasy Sports Insights — Draft Assistant", layout="centered")
 st.title("🏆 Fantasy Sports Insights — Draft Assistant (MVP)")
 
-# Optional notice if key missing
+# Optional notice if key missing (still lets UI work)
 api_key_present = bool(st.secrets.get("OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY"))
 if not api_key_present:
-    st.info("🔐 OpenAI key not configured yet. The UI works, but results will show a setup message.")
+    st.info("🔐 OpenAI key not configured yet. You can test the UI; results will show a setup message.")
 
-# Sport & context
+# --------------------
+# Draft context
+# --------------------
 col1, col2 = st.columns(2)
 with col1:
     sport = st.selectbox("Sport", ["NFL", "NBA", "MLB", "NHL"], index=0)
@@ -26,63 +33,32 @@ with col3:
 with col4:
     next_pick = st.number_input("Your next pick #", min_value=1, max_value=400, value=24, step=1)
 
-st.markdown("### 📊 Rankings source (choose one)")
-src = st.radio("Source", ["Use default rankings", "Upload CSV", "Paste CSV text"], horizontal=True)
+# Optional knobs that help matching/strategy
+col5, col6 = st.columns(2)
+with col5:
+    fuzzy_thresh = st.slider("Name matching sensitivity", 80, 95, 90, help="Lower if drafted names aren't being detected; higher for stricter matching.")
+with col6:
+    pos_priority = st.multiselect("Position priority (optional)", ["QB","RB","WR","TE","FLEX","DST","K","C","G","F","UTIL","SP","RP","OF","D"], default=[])
 
+# --------------------
+# Rankings source
+# --------------------
+st.markdown("### 📊 Rankings source")
+src = st.radio("Source", ["Use live defaults (CSV URL)", "Upload CSV", "Paste CSV text"], horizontal=True)
+
+override_url = None
 uploaded_csv = None
 pasted_csv_text = None
 
-if src == "Upload CSV":
+if src == "Use live defaults (CSV URL)":
+    configured_url = st.secrets.get("RANKINGS_URLS", {}).get(sport)
+    st.caption(f"Configured live URL for **{sport}**: {configured_url or 'None set'}")
+    override_url = st.text_input("Override URL (optional)", placeholder="https://docs.google.com/spreadsheets/d/.../export?format=csv&gid=...")
+    if st.button("🔄 Refresh live rankings cache"):
+        clear_rankings_cache()
+        st.success("Cache cleared. Next load will fetch fresh CSV.")
+
+elif src == "Upload CSV":
     uploaded_csv = st.file_uploader("Upload CSV with columns: player,pos[,team]", type=["csv"])
-elif src == "Paste CSV text":
-    pasted_csv_text = st.text_area("Paste CSV text", placeholder="player,pos,team\nChristian McCaffrey,RB,SF\n...")
 
-st.markdown("### 📝 Draft context")
-drafted_txt = st.text_area("Drafted players so far (one per line)", placeholder="Josh Allen\nCeeDee Lamb\n...")
-roster_txt = st.text_area("Your roster (optional, one per line)", placeholder="RB: Bijan Robinson\nWR: Davante Adams\n...")
-settings = st.text_area("League settings (optional)", placeholder=f"{scoring}, {num_teams}-team, roster & scoring quirks")
-
-if st.button("📈 Get Best Available & Picks"):
-    drafted = parse_lines(drafted_txt)
-    my_roster = parse_lines(roster_txt)
-
-    # 1) Load rankings (records list in rank order)
-    try:
-        rankings = load_rankings(sport, uploaded_csv=uploaded_csv, pasted_csv_text=pasted_csv_text)
-    except Exception as e:
-        st.error(f"Problem loading rankings: {e}")
-        st.stop()
-
-    if not rankings:
-        st.error("No rankings available. Provide a CSV or use defaults.")
-        st.stop()
-
-    # 2) Compute available = rankings - drafted (fuzzy)
-    available_records = minus_drafted(rankings, drafted, thresh=90)  # returns list of dicts
-    # Keep only top N remaining to keep prompt small
-    top_available = available_records[:80]
-    available_names = [r['player'] for r in top_available]
-
-    if len(available_names) == 0:
-        st.warning("All players in your rankings appear drafted. Try lowering the fuzzy threshold or check names.")
-        st.stop()
-
-    with st.spinner("Analyzing board, value, tiers, and positional needs…"):
-        result = get_draft_recommendations(
-            available=available_names,
-            drafted=drafted,
-            my_roster=my_roster,
-            settings=settings,
-            sport=sport,
-            scoring=scoring,
-            num_teams=int(num_teams),
-            next_pick=int(next_pick),
-        )
-
-    # Render JSON nicely if possible
-    try:
-        data = json.loads(result)
-        pretty_render(data)
-    except Exception:
-        st.markdown("### 🧠 AI Draft Insights")
-        st.markdown(result)
+elif src == "Pas
