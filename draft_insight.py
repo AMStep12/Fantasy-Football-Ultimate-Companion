@@ -1,0 +1,1 @@
+#GTP logic for insights
