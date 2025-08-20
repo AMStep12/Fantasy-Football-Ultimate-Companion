@@ -6,17 +6,22 @@ from openai import OpenAI
 def _get_api_key():
     return st.secrets.get("OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY")
 
+def _pick_model():
+    # Prefer the one we detected via the test button
+    if "OPENAI_MODEL" in st.session_state:
+        return st.session_state.OPENAI_MODEL
+    # Fallback order if user didn’t run the test button
+    return "gpt-4o-mini"  # adjust if needed; code will raise a clear error if not available
+
 def get_draft_recommendations(draft_board, settings, sport):
     api_key = _get_api_key()
     if not api_key:
-        # Graceful message when not configured yet
-        return (
-            "⚠️ OpenAI API key not configured.\n\n"
-            "Add it in Streamlit Cloud under **Manage app → Settings → Edit secrets** as:\n\n"
-            "```\nOPENAI_API_KEY = \"sk-...\"\n```\n"
-        )
+        return ("⚠️ OpenAI API key not configured.\n\n"
+                "Add it in Streamlit Cloud under **Manage app → Settings → Edit secrets** as:\n"
+                "```\nOPENAI_API_KEY = \"sk-...\"\n```")
 
     client = OpenAI(api_key=api_key)
+    model = _pick_model()
 
     prompt = f"""
 You are a fantasy {sport} draft assistant.
@@ -30,12 +35,12 @@ DRAFT BOARD:
 LEAGUE SETTINGS:
 {settings}
 
-Output 5 top suggestions with explanations. Use bullet points for clarity.Highlight the absolute best pick,but include the other 4 for options.
+Output 5 top suggestions with explanations. Use bullet points for clarity.
 """
 
     try:
         resp = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model=model,
             messages=[
                 {"role": "system", "content": f"You are a smart fantasy {sport} draft strategist."},
                 {"role": "user", "content": prompt}
@@ -44,4 +49,6 @@ Output 5 top suggestions with explanations. Use bullet points for clarity.Highli
         )
         return resp.choices[0].message.content
     except Exception as e:
-        return f"❌ Error calling OpenAI: {e}"
+        # Surface a helpful message if the model is the issue
+        return (f"❌ Error calling OpenAI: {e}\n\n"
+                f"Tip: Try running the 'OpenAI connection test' in the app to auto-detect a working model.")
