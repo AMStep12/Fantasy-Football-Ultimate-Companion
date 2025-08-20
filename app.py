@@ -1,7 +1,15 @@
-#streamlit frontend
-# app.py
-import streamlit as st
+# app.py (top of file)
+import os, streamlit as st
 from draft_assistant import get_draft_recommendations
+
+st.set_page_config(page_title="Fantasy Sports Insights", layout="centered")
+st.title("🏈 Fantasy Sports Insights")
+st.subheader("AI Draft Assistant (Beta)")
+
+api_key_present = bool(st.secrets.get("OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY"))
+if not api_key_present:
+    st.info("🔐 OpenAI key not configured yet. You can still try the UI; results will show a setup message.")
+
 
 st.set_page_config(page_title="Fantasy Sports Insights", layout="centered")
 
