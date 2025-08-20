@@ -35,7 +35,7 @@ DRAFT BOARD:
 LEAGUE SETTINGS:
 {settings}
 
-Output 5 top suggestions with explanations. Use bullet points for clarity.
+Output 5 top suggestions with explanations. Use bullet points for clarity. The most optimal pick should be highlighted extensively based on this criteria. However, the other 4 options still shown for the optional choices. 
 """
 
     try:
