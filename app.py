@@ -1,65 +1,77 @@
-# app.py (top of file)
-import os, streamlit as st
-from draft_assistant import get_draft_recommendations
+import os
+import json
+import streamlit as st
+from draft_assistant import get_draft_recommendations, pretty_render
+from utils import parse_lines
 
 st.set_page_config(page_title="Fantasy Sports Insights", layout="centered")
-st.title("🏈 Fantasy Sports Insights")
-st.subheader("AI Draft Assistant (Beta)")
+st.title("🏆 Fantasy Sports Insights — Draft Assistant (MVP)")
 
-
-# --- Quick OpenAI connectivity test (optional) ---
-from openai import OpenAI
-
-def _test_openai():
-    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-    CANDIDATE_MODELS = ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-3.5-turbo"]
-    last_err = None
-    for m in CANDIDATE_MODELS:
-        try:
-            r = client.chat.completions.create(
-                model=m,
-                messages=[{"role":"user","content":"Reply with: OK"}],
-                temperature=0.0,
-            )
-            return m, r.choices[0].message.content.strip()
-        except Exception as e:
-            last_err = e
-    raise last_err
-
-with st.expander("🔑 OpenAI connection test"):
-    if st.button("Run test"):
-        try:
-            model_used, msg = _test_openai()
-            st.success(f"Connected! Model: {model_used} • Response: {msg}")
-            st.session_state.OPENAI_MODEL = model_used
-        except Exception as e:
-            st.error(f"OpenAI test failed: {e}")
-
+# Connection check (optional)
 api_key_present = bool(st.secrets.get("OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY"))
 if not api_key_present:
-    st.info("🔐 OpenAI key not configured yet. You can still try the UI; results will show a setup message.")
+    st.info("🔐 OpenAI key not configured yet. The UI works, but recommendations will show a setup message.")
 
+# Sport & basic league context
+col1, col2 = st.columns(2)
+with col1:
+    sport = st.selectbox("Sport", ["NFL", "NBA", "MLB", "NHL"], index=0)
+with col2:
+    scoring = st.selectbox("Scoring", ["PPR", "Half-PPR", "Standard", "Category/Points (NBA/MLB/NHL)"], index=0)
 
-st.set_page_config(page_title="Fantasy Sports Insights", layout="centered")
+col3, col4 = st.columns(2)
+with col3:
+    num_teams = st.number_input("League size (# teams)", min_value=6, max_value=20, value=12, step=1)
+with col4:
+    pick_num = st.number_input("Your next pick number", min_value=1, max_value=400, value=24, step=1)
 
-st.title("🏈 Fantasy Sports Insights")
-st.subheader("AI Draft Assistant (Beta)")
+st.markdown("### 📋 Paste your data (one player per line)")
 
-# Sport selection (default NFL)
-sport = st.selectbox("Select Sport", ["NFL", "NBA", "MLB", "NHL"])
+available_txt = st.text_area(
+    "Available players (paste from your draft room):",
+    placeholder="Christian McCaffrey\nJa'Marr Chase\nJustin Jefferson\n..."
+)
 
-# Draft board input
-draft_board = st.text_area("Paste your league's draft board or remaining players list here")
+drafted_txt = st.text_area(
+    "Drafted players (optional):",
+    placeholder="Josh Allen\nCeeDee Lamb\nAmon-Ra St. Brown\n..."
+)
 
-# League format/settings
-league_settings = st.text_area("Paste league format/settings (e.g. PPR, roster size, scoring rules)")
+roster_txt = st.text_area(
+    "Your roster so far (optional):",
+    placeholder="RB: Bijan Robinson\nWR: Davante Adams\nTE: Mark Andrews\n..."
+)
 
-# Run analysis
+settings = st.text_area(
+    "League settings / format (optional):",
+    placeholder=f"{scoring}, {num_teams}-team, roster & scoring quirks (e.g., 1QB 2RB 3WR 1TE 1FLEX)"
+)
+
 if st.button("📊 Get Draft Recommendations"):
-    if draft_board:
-        with st.spinner("Analyzing players and generating insights..."):
-            insights = get_draft_recommendations(draft_board, league_settings, sport)
-            st.markdown("### 🧠 AI Draft Insights")
-            st.markdown(insights)
-    else:
-        st.warning("Please paste your draft board first.")
+    avail = parse_lines(available_txt)
+    drafted = parse_lines(drafted_txt)
+    roster = parse_lines(roster_txt)
+
+    if not avail:
+        st.warning("Please paste at least some **Available players** (one per line).")
+        st.stop()
+
+    with st.spinner("Analyzing board, value, tiers, and positional needs…"):
+        result = get_draft_recommendations(
+            available=avail,
+            drafted=drafted,
+            my_roster=roster,
+            settings=settings,
+            sport=sport,
+            scoring=scoring,
+            num_teams=int(num_teams),
+            next_pick=int(pick_num),
+        )
+
+    # If result is JSON-like, render nicely; else show raw
+    try:
+        data = json.loads(result)
+        pretty_render(data)
+    except Exception:
+        st.markdown("### 🧠 AI Draft Insights")
+        st.markdown(result)
