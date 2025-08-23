@@ -95,6 +95,11 @@ if st.button("📈 Get Best Available & Picks"):
         st.error("No rankings available. Provide a live CSV URL, upload a CSV, or paste CSV text.")
         st.stop()
 
+    with st.expander("⬇️ Preview loaded rankings (first 10 rows)"):
+    import pandas as pd
+    st.dataframe(pd.DataFrame(rankings[:10]))
+
+
     # 2) Compute available = rankings - drafted (fuzzy remove)
     available_records = minus_drafted(rankings, drafted, thresh=int(fuzzy_thresh))
     if len(available_records) == 0:
