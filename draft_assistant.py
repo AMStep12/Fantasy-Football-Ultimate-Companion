@@ -208,3 +208,55 @@ def get_draft_recommendations(
 ) -> Dict[str, Any]:
     prompt = build_prompt(candidates, state, settings)
     return call_model(prompt, model=model)
+
+
+# ---- Streamlit renderer (optional helper) ------------------------------------
+def pretty_render(st, recs: dict):
+    """
+    Render the JSON from get_draft_recommendations in a clear Streamlit layout.
+    Usage:
+        recs = get_draft_recommendations(...)
+        pretty_render(st, recs)
+    """
+    if not recs:
+        st.warning("No recommendations returned.")
+        return
+
+    top = recs.get("top_targets", [])
+    sleepers = recs.get("sleepers", [])
+    avoids = recs.get("avoids", [])
+    notes = recs.get("notes", "")
+
+    st.subheader("Top Targets (5)")
+    for i, t in enumerate(top, 1):
+        best = " ✅ BEST PICK" if t.get("best_pick") else ""
+        st.markdown(
+            f"**{i}. {t['player']} ({t['pos']} – {t['team']}){best}**  \n"
+            f"- *Why best pick:* {t.get('why_best_pick','—') if t.get('best_pick') else '—'}  \n"
+            f"- *Why for team:* {t.get('why_for_team','')}"
+        )
+
+    c1, c2 = st.columns(2)
+    with c1:
+        st.subheader("Sleepers (3)")
+        if not sleepers:
+            st.write("—")
+        for s in sleepers:
+            st.markdown(
+                f"**{s['player']} ({s['pos']} – {s['team']})**  \n"
+                f"- {s.get('why_sleeper','')}"
+            )
+    with c2:
+        st.subheader("Avoids (up to 2)")
+        if not avoids:
+            st.write("—")
+        for a in avoids:
+            st.markdown(
+                f"**{a['player']} ({a['pos']} – {a['team']})**  \n"
+                f"- {a.get('reason','')}"
+            )
+
+    if notes:
+        st.markdown("---")
+        st.subheader("Roster Notes / Pivot Plan")
+        st.write(notes)
