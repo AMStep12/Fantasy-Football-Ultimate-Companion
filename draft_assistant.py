@@ -65,8 +65,9 @@ LEAGUE SETTINGS / NOTES:
 {settings or "N/A"}
 
 TASKS:
-1) Choose 5 top targets for the upcoming pick. Balance positional needs and value. Include a short, actionable reason.
-2) List 3 sleepers (upside plays) that may be available in the next few rounds.
+1) Choose 5 top targets for the upcoming pick. Balance positional needs and value. Include a short, actionable reason. Highlight a clear and decisive best pick and reasoning as to why. Describe why each players is great pick
+for their team in a few sentences.
+2) List 3 sleepers (upside plays) that may be available in the next few rounds. Give solid reasoning as to why each would be a sleeper pick in this round.
 3) List up to 2 players to avoid (overvalued / injury / scheme fit).
 4) Add 2–3 sentence notes: roster build advice or pivot plan if a run happens.
 
