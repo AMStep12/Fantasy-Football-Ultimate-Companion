@@ -3,7 +3,7 @@ import os
 import json
 import streamlit as st
 
-from draft_assistant import get_draft_recommendations, pretty_render
+from draft_assistant import get_draft_recommendations_wrapper as get_draft_recommendations, pretty_render
 from rankings_loader import load_rankings, clear_rankings_cache
 from utils import parse_lines, minus_drafted
 
