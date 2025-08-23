@@ -211,109 +211,47 @@ def get_draft_recommendations(
 
 # ---- Convenience adapters (compat with older app.py calls) -------------------
 import pandas as _pd
-
 from typing import Union
 
 def _df_to_players(df):
     rows = []
     if isinstance(df, list):
         if len(df) > 0 and isinstance(df[0], str):
-            # only names
+            # list of names
             for name in df:
-                rows.append(PlayerRow(player=name, pos="UNK", team="UNK", bye=None, ecr=None, adp=None, proj_pts=None, tier=None))
+                rows.append(
+                    PlayerRow(
+                        player=name, pos="UNK", team="UNK",
+                        bye=None, ecr=None, adp=None, proj_pts=None, tier=None
+                    )
+                )
         elif len(df) > 0 and isinstance(df[0], dict):
             df = _pd.DataFrame(df)
         else:
-            # empty -> return
             return rows
+
     if isinstance(df, _pd.DataFrame):
-        # Expect columns: player,pos,team,bye,ecr,adp,proj_pts,tier (extras ignored)
+        # Expect (if present): player,pos,team,bye,ecr,adp,proj_pts,tier
         for _, r in df.iterrows():
-            rows.append(PlayerRow(
-                player=str(r.get("player") or r.get("Player") or r.get("name") or "Unknown"),
-                pos=str(r.get("pos") or r.get("Pos") or "UNK"),
-                team=str(r.get("team") or r.get("Team") or "UNK"),
-                bye=(int(r["bye"]) if _pd.notna(r.get("bye")) else None),
-                ecr=(float(r["ecr"]) if _pd.notna(r.get("ecr")) else None),
-                adp=(float(r["adp"]) if _pd.notna(r.get("adp")) else None),
-                proj_pts=(float(r["proj_pts"]) if _pd.notna(r.get("proj_pts")) else None),
-                tier=(int(r["tier"]) if _pd.notna(r.get("tier")) else None),
-            ))
+            rows.append(
+                PlayerRow(
+                    player=str(r.get("player") or r.get("Player") or r.get("name") or "Unknown"),
+                    pos=str(r.get("pos") or r.get("Pos") or "UNK"),
+                    team=str(r.get("team") or r.get("Team") or "UNK"),
+                    bye=(int(r["bye"]) if _pd.notna(r.get("bye")) else None),
+                    ecr=(float(r["ecr"]) if _pd.notna(r.get("ecr")) else None),
+                    adp=(float(r["adp"]) if _pd.notna(r.get("adp")) else None),
+                    proj_pts=(float(r["proj_pts"]) if _pd.notna(r.get("proj_pts")) else None),
+                    tier=(int(r["tier"]) if _pd.notna(r.get("tier")) else None),
+                )
+            )
     return rows
 
-def _ensure_state(state: dict | None, *, next_pick: int | None, draft_round: int | None,
-                  turns_until_next_pick: int | None, roster_counts: dict | None,
-                  starters_needed: dict | None, bench_slots_left: int | None) -> RosterState:
-    return RosterState(
-        picks_made=state.get("picks_made", []) if state else [],
-        roster_counts=roster_counts or (state.get("roster_counts") if state else {}) or {},
-        starters_needed=starters_needed or (state.get("starters_needed") if state else {}) or {},
-        bench_slots_left=int(bench_slots_left if bench_slots_left is not None else (state.get("bench_slots_left", 0) if state else 0)),
-        draft_round=int(draft_round if draft_round is not None else (state.get("draft_round", 1) if state else 1)),
-        pick_overall=int(next_pick if next_pick is not None else (state.get("pick_overall", 1) if state else 1)),
-        turns_until_next_pick=int(
-            turns_until_next_pick if turns_until_next_pick is not None else (state.get("turns_until_next_pick", 2) if state else 2)
-        ),
-    )
+def _ensure_state(
+    state: dict | None, *,
+    next_pick: int | None,
+    draft_round: int | None,
+    turns_until_next_pick: int | None,
+    roster_counts: dict | None,
+    star
 
-def _ensure_settings(settings: dict | None, *, teams: int | None, scoring: str | None,
-                     qb_format: str | None, roster_limits: dict | None) -> LeagueSettings:
-    base = settings or {}
-    return LeagueSettings(
-        teams=int(teams if teams is not None else base.get("teams", 12)),
-        scoring=(scoring or base.get("scoring", "PPR")),
-        qb_format=(qb_format or base.get("qb_format", "1QB")),
-        roster_limits=roster_limi
-
-
-
-# ---- Streamlit renderer (optional helper) ------------------------------------
-def pretty_render(st, recs: dict):
-    """
-    Render the JSON from get_draft_recommendations in a clear Streamlit layout.
-    Usage:
-        recs = get_draft_recommendations(...)
-        pretty_render(st, recs)
-    """
-    if not recs:
-        st.warning("No recommendations returned.")
-        return
-
-    top = recs.get("top_targets", [])
-    sleepers = recs.get("sleepers", [])
-    avoids = recs.get("avoids", [])
-    notes = recs.get("notes", "")
-
-    st.subheader("Top Targets (5)")
-    for i, t in enumerate(top, 1):
-        best = " ✅ BEST PICK" if t.get("best_pick") else ""
-        st.markdown(
-            f"**{i}. {t['player']} ({t['pos']} – {t['team']}){best}**  \n"
-            f"- *Why best pick:* {t.get('why_best_pick','—') if t.get('best_pick') else '—'}  \n"
-            f"- *Why for team:* {t.get('why_for_team','')}"
-        )
-
-    c1, c2 = st.columns(2)
-    with c1:
-        st.subheader("Sleepers (3)")
-        if not sleepers:
-            st.write("—")
-        for s in sleepers:
-            st.markdown(
-                f"**{s['player']} ({s['pos']} – {s['team']})**  \n"
-                f"- {s.get('why_sleeper','')}"
-            )
-    with c2:
-        st.subheader("Avoids (up to 2)")
-        if not avoids:
-            st.write("—")
-        for a in avoids:
-            st.markdown(
-                f"**{a['player']} ({a['pos']} – {a['team']})**  \n"
-                f"- {a.get('reason','')}"
-            )
-
-    if notes:
-        st.markdown("---")
-        st.subheader("Roster Notes / Pivot Plan")
-        st.write(notes)
