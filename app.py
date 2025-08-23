@@ -122,14 +122,21 @@ if st.button("📈 Get Best Available & Picks"):
     with st.spinner("Analyzing board, value, tiers, and positional needs…"):
         result = get_draft_recommendations(
             available=available_names,
-            drafted=drafted,
-            my_roster=my_roster,
-            settings=full_settings,
-            sport=sport,
-            scoring=scoring,
-            num_teams=int(num_teams),
             next_pick=int(next_pick),
-        )
+            draft_round=int(draft_round),
+            turns_until_next_pick=int(turns_until_next_pick),
+            roster_counts=roster_counts_dict,       # dict
+            starters_needed=starters_needed_dict,   # dict
+            bench_slots_left=int(bench_left),
+
+    # Make sure THIS is a dict:
+            settings={"teams": league_size, "scoring": "PPR", "qb_format": "1QB",
+              "roster_limits": {"QB":1,"RB":2,"WR":2,"TE":1,"DST":1,"K":1}},
+
+    # …or pass these individually:
+    # teams=league_size, scoring="PPR", qb_format="1QB", roster_limits={...}
+)
+
 
     # 5) Render
     try:
