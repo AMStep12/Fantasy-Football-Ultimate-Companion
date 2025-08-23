@@ -212,7 +212,9 @@ def get_draft_recommendations(
 # ---- Convenience adapters (compat with older app.py calls) -------------------
 import pandas as _pd
 
-def _df_to_players(df: " _pd.DataFrame | list[dict] | list[str] "):
+from typing import Union
+
+def _df_to_players(df: Union["_pd.DataFrame", list[dict], list[str]]):
     rows = []
     if isinstance(df, list):
         if len(df) > 0 and isinstance(df[0], str):
