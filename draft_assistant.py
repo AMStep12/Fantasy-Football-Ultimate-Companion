@@ -214,7 +214,7 @@ import pandas as _pd
 
 from typing import Union
 
-def _df_to_players(df: Union["_pd.DataFrame", list[dict], list[str]]):
+def _df_to_players(df):
     rows = []
     if isinstance(df, list):
         if len(df) > 0 and isinstance(df[0], str):
