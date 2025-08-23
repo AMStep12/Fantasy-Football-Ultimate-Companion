@@ -264,17 +264,28 @@ def _ensure_state(
     starters_needed: dict | None,
     bench_slots_left: int | None
 ) -> RosterState:
+    # NEW: guard against non-dict
+    if not isinstance(state, dict):
+        state = {}
+
     return RosterState(
-        picks_made=state.get("picks_made", []) if state else [],
-        roster_counts=roster_counts or (state.get("roster_counts") if state else {}) or {},
-        starters_needed=starters_needed or (state.get("starters_needed") if state else {}) or {},
-        bench_slots_left=int(bench_slots_left if bench_slots_left is not None else (state.get("bench_slots_left", 0) if state else 0)),
-        draft_round=int(draft_round if draft_round is not None else (state.get("draft_round", 1) if state else 1)),
-        pick_overall=int(next_pick if next_pick is not None else (state.get("pick_overall", 1) if state else 1)),
+        picks_made=state.get("picks_made", []),
+        roster_counts=(roster_counts if isinstance(roster_counts, dict) else state.get("roster_counts", {})) or {},
+        starters_needed=(starters_needed if isinstance(starters_needed, dict) else state.get("starters_needed", {})) or {},
+        bench_slots_left=int(
+            bench_slots_left if bench_slots_left is not None else state.get("bench_slots_left", 0)
+        ),
+        draft_round=int(
+            draft_round if draft_round is not None else state.get("draft_round", 1)
+        ),
+        pick_overall=int(
+            next_pick if next_pick is not None else state.get("pick_overall", 1)
+        ),
         turns_until_next_pick=int(
-            turns_until_next_pick if turns_until_next_pick is not None else (state.get("turns_until_next_pick", 2) if state else 2)
+            turns_until_next_pick if turns_until_next_pick is not None else state.get("turns_until_next_pick", 2)
         ),
     )
+
 
 def _ensure_settings(
     settings: dict | None,
@@ -284,12 +295,18 @@ def _ensure_settings(
     qb_format: str | None,
     roster_limits: dict | None
 ) -> LeagueSettings:
-    base = settings or {}
+    # NEW: guard against non-dict
+    base = settings if isinstance(settings, dict) else {}
+
     return LeagueSettings(
         teams=int(teams if teams is not None else base.get("teams", 12)),
         scoring=(scoring or base.get("scoring", "PPR")),
         qb_format=(qb_format or base.get("qb_format", "1QB")),
-        roster_limits=roster_limits or base.get("roster_limits", {"QB":1,"RB":2,"WR":2,"TE":1,"DST":1,"K":1}),
+        roster_limits=(
+            roster_limits
+            if isinstance(roster_limits, dict) and roster_limits
+            else base.get("roster_limits", {"QB":1,"RB":2,"WR":2,"TE":1,"DST":1,"K":1})
+        ),
     )
 
 # Private core trampoline used by both call styles
